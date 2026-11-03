@@ -6,6 +6,11 @@
       "Bash(dbt ls *)",
       "Bash(mf query *)",
       "Bash(mf list *)",
+      "PowerShell(dbt show *)",
+      "PowerShell(dbt parse *)",
+      "PowerShell(dbt ls *)",
+      "PowerShell(mf query *)",
+      "PowerShell(mf list *)",
       "Skill(tpch-warehouse)",
       "Skill(analytics-runbook)"
     ]

@@ -68,11 +68,10 @@ git push                                  # every push after that
 ## 6. Open a pull request
 
 ```bash
-gh pr create --fill          # or click "Compare & pull request" on GitHub
-gh pr create --fill --draft  # not ready for review yet
+gh pr create --web           # opens the PR form in your browser, template filled in
 ```
 
-Fill in the template: what changed, whether skill docs changed, and eval results before and after.
+Not ready for review yet? Choose **Create draft pull request** in the form. Fill in the template: what changed, whether skill docs changed, and eval results before and after.
 Keep PRs small enough to review in ten minutes.
 
 ## 7. Checks

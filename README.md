@@ -22,11 +22,24 @@ provenance footer on every answer (source tier, freshness, reviewer, owner).
 
 ## Set up (about 5 minutes)
 
-Needs Python 3.10+ and [Claude Code](https://code.claude.com/docs/en/setup).
+Needs Python 3.10 to 3.13 (dbt doesn't run on 3.14 or newer yet) and
+[Claude Code](https://code.claude.com/docs/en/setup).
+
+**macOS or Linux, one step:**
+
+```bash
+gh repo clone <owner>/self-serve-analytics-demo   # or unzip the folder
+cd self-serve-analytics-demo
+bash scripts/bootstrap.sh                          # about 5 minutes the first time
+source .venv/bin/activate
+claude
+```
+
+**Step by step (any OS):**
 
 ```bash
 git clone <this repo> && cd self-serve-analytics-demo
-python -m venv .venv
+python3.12 -m venv .venv             # Windows: py -3.12 -m venv .venv
 source .venv/bin/activate            # PowerShell: .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 
