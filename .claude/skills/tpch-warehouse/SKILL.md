@@ -2,7 +2,7 @@
 name: tpch-warehouse
 description: "IF the user asks a business question that needs numbers from the TPC-H sales warehouse (revenue, sales, discounts, orders, customers, market segments, regions, nations, suppliers) — THEN use this skill. DO NOT use it for editing dbt models, CI or pipeline work, or questions with no data component."
 metadata:
-  version: 1.0.0
+  version: 1.1.0
   owner: data-team
 ---
 
@@ -45,6 +45,9 @@ docs is the fallback, used only after the semantic layer is shown not to cover t
    `mf query --metrics revenue --group-by metric_time__year --order metric_time__year --decimals 2`
 3. **Filter:** `--where "{{ Dimension('order_line__customer_region') }} = 'EUROPE'"`, and dates with
    `--where "{{ TimeDimension('metric_time', 'day') }} between '1996-01-01' and '1996-12-31'"` (repeat `--where` to combine filters).
+   Order metrics (`order_count`, `active_customers`) use the `order__` prefix and can be filtered or
+   grouped by customer nation, region or segment, e.g.
+   `--where "{{ Dimension('order__customer_nation') }} = 'UNITED KINGDOM'"` (nation names are upper case).
    Don't use `--start-time`/`--end-time`: they return an empty result in this project.
 4. **Fallback:** only if no metric fits, or the query errors → governed SQL via `references/*.md`
 
