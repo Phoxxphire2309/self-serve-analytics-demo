@@ -1,0 +1,11 @@
+{
+  "skillOverrides": {
+    "tpch-warehouse": "off",
+    "analytics-runbook": "off"
+  },
+  "permissions": {
+    "deny": [
+      "Read(./.claude/skills/**)"
+    ]
+  }
+}

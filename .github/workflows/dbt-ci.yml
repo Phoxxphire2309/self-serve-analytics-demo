@@ -1,0 +1,41 @@
+name: dbt CI
+
+# Builds and tests every model on the local DuckDB target (no warehouse credentials needed),
+# validates the semantic layer, and confirms the evals' pinned answers still reproduce.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dbt, MetricFlow and the data generator
+        run: pip install -r requirements.txt
+
+      - name: Cache TPC-H sample data
+        uses: actions/cache@v4
+        with:
+          path: data/tpch_sf1
+          key: tpch-sf1-${{ hashFiles('scripts/setup_data.py') }}
+
+      - name: Generate sample data
+        run: python scripts/setup_data.py
+
+      - name: dbt build (models + tests)
+        run: dbt build
+
+      - name: Validate semantic layer
+        run: mf validate-configs
+
+      - name: Pinned eval answers still reproduce
+        run: python evals/run_evals.py --check-expected

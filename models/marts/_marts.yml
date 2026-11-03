@@ -1,0 +1,106 @@
+version: 2
+
+# Governed, consumption-ready models. Every model here has an owner, a tier and a
+# stated grain, and is described in .claude/skills/tpch-warehouse/references/.
+# Changing anything in this folder must update the matching reference doc in the same PR
+# (enforced by .github/workflows/skill-drift.yml).
+
+models:
+  - name: fct_order_lines
+    description: >
+      Canonical sales fact. One row per order line. The only governed source for revenue.
+      Revenue = sum of net_amount (extended price after discount, before tax), dated by ship_date.
+    config:
+      meta:
+        owner: data-team
+        tier: gold
+        grain: one row per order line (order_key, line_number)
+    columns:
+      - name: order_line_id
+        description: Surrogate key, order_key-line_number.
+        data_tests: [unique, not_null]
+      - name: order_key
+        data_tests: [not_null]
+      - name: customer_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_customers')
+                field: customer_key
+      - name: order_date
+        description: Date the order was placed. Not the revenue date.
+      - name: ship_date
+        description: Date the line shipped. Revenue is recognised on this date.
+        data_tests: [not_null]
+      - name: market_segment
+        description: Customer's market segment.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [AUTOMOBILE, BUILDING, FURNITURE, HOUSEHOLD, MACHINERY]
+      - name: customer_region
+        description: Region of the CUSTOMER. Default meaning of "region" for sales questions.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [AFRICA, AMERICA, ASIA, EUROPE, MIDDLE EAST]
+      - name: supplier_region
+        description: Region of the SUPPLIER. Only use when the question is about where goods were supplied from.
+      - name: return_flag
+        description: R = returned, A = accepted, N = not yet decided.
+      - name: is_returned
+        description: >
+          True when return_flag = 'R'. Revenue does NOT exclude returns. Returns are only flagged
+          for lines received up to mid-1995; later lines are all 'N', so return trends after that are meaningless.
+      - name: gross_amount
+        description: Extended price before discount. Not revenue.
+      - name: net_amount
+        description: Extended price after discount, before tax. Revenue = sum of this.
+        data_tests: [not_null]
+      - name: tax_amount
+        description: Tax on net_amount. Never included in revenue.
+
+  - name: fct_orders
+    description: >
+      Canonical order fact. One row per order. Use for order counts and active customers.
+      Has no money columns on purpose: revenue comes from fct_order_lines only.
+    config:
+      meta:
+        owner: data-team
+        tier: gold
+        grain: one row per order (order_key)
+    columns:
+      - name: order_key
+        data_tests: [unique, not_null]
+      - name: customer_key
+        data_tests: [not_null]
+      - name: order_date
+        description: Date the order was placed. Order counts and active customers use this date.
+        data_tests: [not_null]
+      - name: order_status
+        description: F = fulfilled, O = open, P = partially fulfilled.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [F, O, P]
+      - name: customer_region
+        description: Region of the customer who placed the order.
+
+  - name: dim_customers
+    description: >
+      Canonical customer dimension. One row per customer, including customers who have never ordered.
+    config:
+      meta:
+        owner: data-team
+        tier: gold
+        grain: one row per customer (customer_key)
+    columns:
+      - name: customer_key
+        data_tests: [unique, not_null]
+      - name: region
+        description: Customer's region.
+      - name: lifetime_orders
+        description: Number of orders ever placed. 0 for customers who have never ordered.
+      - name: has_ordered
+        description: True if the customer has placed at least one order.

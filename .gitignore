@@ -1,0 +1,18 @@
+# dbt
+target/
+dbt_packages/
+logs/
+.user.yml
+
+# local warehouse and generated data
+analytics.duckdb
+analytics.duckdb.wal
+/data
+
+# eval runs (kept as CI artifacts / in the warehouse, not in git)
+evals/results/
+
+# python
+.venv/
+__pycache__/
+*.pyc

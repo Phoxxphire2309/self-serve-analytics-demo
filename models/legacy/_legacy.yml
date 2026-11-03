@@ -1,0 +1,13 @@
+version: 2
+
+models:
+  - name: rpt_monthly_sales
+    description: >
+      DEPRECATED. Monthly order totals for a retired dashboard. Its revenue column includes
+      tax and is dated by order date, so it disagrees with the governed revenue metric. Do not use. Use the semantic layer metric `revenue` or
+      fct_order_lines instead.
+    deprecation_date: 2027-03-31
+    config:
+      meta:
+        owner: data-team
+        tier: deprecated

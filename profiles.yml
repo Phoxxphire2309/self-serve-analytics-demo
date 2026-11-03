@@ -1,0 +1,27 @@
+# Two targets, same project:
+#   dev       -> local DuckDB file, no accounts needed (default)
+#   snowflake -> your Snowflake account; reads SNOWFLAKE_SAMPLE_DATA.TPCH_SF1
+#                and builds models into SNOWFLAKE_DATABASE.<SNOWFLAKE_SCHEMA>_*
+#
+# Switch with the TPCH_TARGET environment variable (dbt AND MetricFlow both follow it):
+#   export TPCH_TARGET=snowflake      (PowerShell: $env:TPCH_TARGET = "snowflake")
+# then run `dbt build` once so the semantic layer's manifest points at the new target.
+tpch_demo:
+  target: "{{ env_var('TPCH_TARGET', 'dev') }}"
+  outputs:
+    dev:
+      type: duckdb
+      path: analytics.duckdb
+      threads: 4
+
+    snowflake:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT', '') }}"
+      user: "{{ env_var('SNOWFLAKE_USER', '') }}"
+      authenticator: externalbrowser   # SSO sign-in in your browser; no password stored
+      role: "{{ env_var('SNOWFLAKE_ROLE', '') }}"
+      warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE', '') }}"
+      database: "{{ env_var('SNOWFLAKE_DATABASE', '') }}"
+      schema: "{{ env_var('SNOWFLAKE_SCHEMA', 'TPCH_DEMO') }}"
+      threads: 4
+      client_session_keep_alive: false

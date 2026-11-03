@@ -1,0 +1,177 @@
+# Offline evals: question / answer pairs.
+#
+# Ground truth is pinned: TPC-H SF1 never changes, and every `expected` value is produced by
+# `gold_sql`, which reads the RAW source tables (not the marts), so a bug in the marts or the
+# semantic layer shows up as a failure here too. Confirm the pins on any target with:
+#   python evals/run_evals.py --check-expected
+#
+# `traps` lists the wrong turns the question is designed to catch. Add a case every time a
+# stakeholder corrects the agent: the correction is the eval.
+
+defaults:
+  # Relative tolerance for numeric answers. Keep it TIGHTER than the gap between the right
+  # answer and the trap answers: TPC-H is very uniform, so e.g. 1997 revenue by order date
+  # is only 0.2% off the ship-date figure, and customer vs supplier region only 0.4%.
+  tolerance_pct: 0.05
+
+cases:
+  - id: rev_1997
+    domain: sales
+    question: What was total revenue in 1997?
+    traps: [tax-inclusive order totals, gross instead of net, order date instead of ship date]
+    expected: 33116752392.08
+    gold_sql: >
+      select sum(l_extendedprice * (1 - l_discount))
+      from {{ source('tpch', 'lineitem') }}
+      where l_shipdate between date '1997-01-01' and date '1997-12-31'
+
+  - id: rev_last_year
+    domain: sales
+    question: What was our revenue last year?
+    traps: [anchoring on today's date, treating partial 1998 as last year]
+    expected: 33116752392.08
+    gold_sql: >
+      select sum(l_extendedprice * (1 - l_discount))
+      from {{ source('tpch', 'lineitem') }}
+      where l_shipdate between date '1997-01-01' and date '1997-12-31'
+
+  - id: rev_europe_1996
+    domain: sales
+    question: What was revenue from European customers in 1996?
+    traps: [supplier region instead of customer region]
+    expected: 6729873126.54
+    gold_sql: >
+      select sum(l.l_extendedprice * (1 - l.l_discount))
+      from {{ source('tpch', 'lineitem') }} l
+      join {{ source('tpch', 'orders') }} o on l.l_orderkey = o.o_orderkey
+      join {{ source('tpch', 'customer') }} c on o.o_custkey = c.c_custkey
+      join {{ source('tpch', 'nation') }} n on c.c_nationkey = n.n_nationkey
+      join {{ source('tpch', 'region') }} r on n.n_regionkey = r.r_regionkey
+      where r.r_name = 'EUROPE'
+        and l.l_shipdate between date '1996-01-01' and date '1996-12-31'
+
+  - id: rev_asia_suppliers_1995
+    domain: sales
+    # Was "How much of our 1995 revenue came from ...". The agent fairly read "how much of" as a
+    # share and answered 19.94%. The question was ambiguous, not the agent: fix the eval.
+    question: What was our 1995 revenue from goods supplied by suppliers based in Asia?
+    traps: [customer region instead of supplier region]
+    expected: 6631223968.70
+    gold_sql: >
+      select sum(l.l_extendedprice * (1 - l.l_discount))
+      from {{ source('tpch', 'lineitem') }} l
+      join {{ source('tpch', 'supplier') }} s on l.l_suppkey = s.s_suppkey
+      join {{ source('tpch', 'nation') }} n on s.s_nationkey = n.n_nationkey
+      join {{ source('tpch', 'region') }} r on n.n_regionkey = r.r_regionkey
+      where r.r_name = 'ASIA'
+        and l.l_shipdate between date '1995-01-01' and date '1995-12-31'
+
+  - id: rev_building_q4_1996
+    domain: sales
+    question: What was revenue from the BUILDING segment in Q4 1996?
+    traps: [order date instead of ship date, fiscal vs calendar quarter]
+    expected: 1715736387.71
+    gold_sql: >
+      select sum(l.l_extendedprice * (1 - l.l_discount))
+      from {{ source('tpch', 'lineitem') }} l
+      join {{ source('tpch', 'orders') }} o on l.l_orderkey = o.o_orderkey
+      join {{ source('tpch', 'customer') }} c on o.o_custkey = c.c_custkey
+      where c.c_mktsegment = 'BUILDING'
+        and l.l_shipdate between date '1996-10-01' and date '1996-12-31'
+
+  - id: top_segment_1997
+    domain: sales
+    question: Which market segment brought in the most revenue in 1997?
+    traps: [close call between top two segments, counting orders instead of revenue]
+    expected_text: BUILDING
+    gold_sql: >
+      select c.c_mktsegment
+      from {{ source('tpch', 'lineitem') }} l
+      join {{ source('tpch', 'orders') }} o on l.l_orderkey = o.o_orderkey
+      join {{ source('tpch', 'customer') }} c on o.o_custkey = c.c_custkey
+      where l.l_shipdate between date '1997-01-01' and date '1997-12-31'
+      group by c.c_mktsegment
+      order by sum(l.l_extendedprice * (1 - l.l_discount)) desc
+
+  - id: rev_growth_1996
+    domain: sales
+    question: By what percentage did revenue change in 1996 compared with 1995?
+    traps: [growth computed on order-date totals, sign of a small change]
+    unit: percent
+    tolerance_abs: 0.01   # percentage points
+    expected: -0.1236
+    gold_sql: >
+      select (sum(case when l_shipdate between date '1996-01-01' and date '1996-12-31'
+                       then l_extendedprice * (1 - l_discount) end)
+            / sum(case when l_shipdate between date '1995-01-01' and date '1995-12-31'
+                       then l_extendedprice * (1 - l_discount) end) - 1) * 100
+      from {{ source('tpch', 'lineitem') }}
+
+  - id: discount_cost_1997
+    domain: sales
+    question: How much did discounts cost us in 1997?
+    traps: [averaging discount rates instead of summing discount value]
+    expected: 1743276429.30
+    gold_sql: >
+      select sum(l_extendedprice * l_discount)
+      from {{ source('tpch', 'lineitem') }}
+      where l_shipdate between date '1997-01-01' and date '1997-12-31'
+
+  - id: rev_germany_h1_1998
+    domain: sales
+    question: What was revenue from customers in Germany in the first half of 1998?
+    traps: [nation name casing, supplier nation instead of customer nation]
+    expected: 654475901.35
+    gold_sql: >
+      select sum(l.l_extendedprice * (1 - l.l_discount))
+      from {{ source('tpch', 'lineitem') }} l
+      join {{ source('tpch', 'orders') }} o on l.l_orderkey = o.o_orderkey
+      join {{ source('tpch', 'customer') }} c on o.o_custkey = c.c_custkey
+      join {{ source('tpch', 'nation') }} n on c.c_nationkey = n.n_nationkey
+      where n.n_name = 'GERMANY'
+        and l.l_shipdate between date '1998-01-01' and date '1998-06-30'
+
+  - id: orders_1996
+    domain: customers
+    question: How many orders were placed in 1996?
+    traps: [counting order lines instead of orders]
+    expected: 228626
+    gold_sql: >
+      select count(*)
+      from {{ source('tpch', 'orders') }}
+      where o_orderdate between date '1996-01-01' and date '1996-12-31'
+
+  - id: active_customers_1997
+    domain: customers
+    question: How many active customers did we have in 1997?
+    traps: [counting the whole customer base, using ship date]
+    expected: 86680
+    gold_sql: >
+      select count(distinct o_custkey)
+      from {{ source('tpch', 'orders') }}
+      where o_orderdate between date '1997-01-01' and date '1997-12-31'
+
+  - id: never_ordered
+    domain: customers
+    question: How many of our customers have never placed an order?
+    traps: [starting from the orders table, which cannot see them]
+    expected: 50004
+    gold_sql: >
+      select count(*)
+      from {{ source('tpch', 'customer') }} c
+      where not exists (
+        select 1 from {{ source('tpch', 'orders') }} o where o.o_custkey = c.c_custkey
+      )
+
+  - id: uk_orders_1995
+    domain: customers
+    question: How many orders did customers in the United Kingdom place in 1995?
+    traps: [counting lines, nation name casing]
+    expected: 9179
+    gold_sql: >
+      select count(*)
+      from {{ source('tpch', 'orders') }} o
+      join {{ source('tpch', 'customer') }} c on o.o_custkey = c.c_custkey
+      join {{ source('tpch', 'nation') }} n on c.c_nationkey = n.n_nationkey
+      where n.n_name = 'UNITED KINGDOM'
+        and o.o_orderdate between date '1995-01-01' and date '1995-12-31'

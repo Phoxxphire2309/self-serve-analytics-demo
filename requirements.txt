@@ -1,0 +1,8 @@
+# Tested together on Python 3.12/3.13. All free and open source; no dbt Cloud account needed.
+dbt-core==1.12.6
+dbt-duckdb==1.11.1
+dbt-snowflake==1.12.4
+dbt-metricflow==0.15.0
+duckdb==2.0.0
+tpchgen-cli==4.0.0
+PyYAML==6.0.3

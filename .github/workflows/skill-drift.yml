@@ -1,0 +1,25 @@
+name: Skill drift check
+
+# Fails a PR that changes a governed model or metric without updating the skill docs
+# that tell Claude how to use it. Add the `no-skill-change` label to override.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+jobs:
+  skill-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check governed models and skill docs changed together
+        env:
+          SKIP_SKILL_CHECK: ${{ contains(github.event.pull_request.labels.*.name, 'no-skill-change') }}
+        run: python scripts/check_skill_drift.py "origin/${{ github.base_ref }}"

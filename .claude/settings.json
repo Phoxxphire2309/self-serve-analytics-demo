@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dbt show *)",
+      "Bash(dbt parse *)",
+      "Bash(dbt ls *)",
+      "Bash(mf query *)",
+      "Bash(mf list *)",
+      "Skill(tpch-warehouse)",
+      "Skill(analytics-runbook)"
+    ]
+  }
+}

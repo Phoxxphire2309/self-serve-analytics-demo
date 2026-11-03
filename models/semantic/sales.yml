@@ -1,0 +1,112 @@
+# Semantic layer: the governed metric definitions.
+# Humans own these definitions. Claude can draft the descriptions, but a person
+# signs off every metric (the article found LLM-generated definitions made accuracy worse).
+
+semantic_models:
+  - name: order_lines
+    description: Sales at order-line grain. Revenue lives here.
+    model: ref('fct_order_lines')
+    defaults:
+      agg_time_dimension: ship_date
+    entities:
+      - name: order_line
+        type: primary
+        expr: order_line_id
+      - name: order
+        type: foreign
+        expr: order_key
+      - name: customer
+        type: foreign
+        expr: customer_key
+    dimensions:
+      - name: ship_date
+        type: time
+        type_params:
+          time_granularity: day
+      - name: customer_region
+        type: categorical
+      - name: customer_nation
+        type: categorical
+      - name: supplier_region
+        type: categorical
+      - name: supplier_nation
+        type: categorical
+      - name: market_segment
+        type: categorical
+      - name: is_returned
+        type: categorical
+      - name: ship_mode
+        type: categorical
+    measures:
+      - name: net_amount
+        description: Extended price after discount, before tax.
+        agg: sum
+      - name: gross_amount
+        description: Extended price before discount.
+        agg: sum
+      - name: quantity
+        agg: sum
+
+  - name: orders
+    description: Orders at order grain. Order counts and active customers live here.
+    model: ref('fct_orders')
+    defaults:
+      agg_time_dimension: order_date
+    entities:
+      - name: order
+        type: primary
+        expr: order_key
+      - name: customer
+        type: foreign
+        expr: customer_key
+    dimensions:
+      - name: order_date
+        type: time
+        type_params:
+          time_granularity: day
+      - name: order_status
+        type: categorical
+      - name: order_priority
+        type: categorical
+      - name: customer_region
+        type: categorical
+      - name: market_segment
+        type: categorical
+    measures:
+      - name: order_count
+        agg: count_distinct
+        expr: order_key
+      - name: ordering_customers
+        agg: count_distinct
+        expr: customer_key
+
+metrics:
+  - name: revenue
+    label: Revenue
+    description: >
+      Net revenue: extended price after discount, before tax, recognised on ship date.
+      Includes all lines (returns are not netted off). The company's headline revenue number.
+    type: simple
+    type_params:
+      measure: net_amount
+
+  - name: gross_sales
+    label: Gross sales
+    description: Extended price before discount, by ship date. Not revenue; used for discount analysis.
+    type: simple
+    type_params:
+      measure: gross_amount
+
+  - name: order_count
+    label: Orders
+    description: Number of distinct orders, by order date.
+    type: simple
+    type_params:
+      measure: order_count
+
+  - name: active_customers
+    label: Active customers
+    description: Distinct customers who placed at least one order in the period, by order date.
+    type: simple
+    type_params:
+      measure: ordering_customers
