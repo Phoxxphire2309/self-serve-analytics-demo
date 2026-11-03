@@ -13,6 +13,9 @@ None. Note that about a third of customers have never ordered — keep or drop t
 - `order_status`: F = fulfilled, O = open, P = partially fulfilled. All statuses count as orders.
 - `order_priority`: 1-URGENT, 2-HIGH, 3-MEDIUM, 4-NOT SPECIFIED, 5-LOW.
 - `market_segment`, `customer_region`, `customer_nation` / `region`, `nation`: the customer's.
+  In the semantic layer these are `order__market_segment`, `order__customer_region` and
+  `order__customer_nation`, so order counts and active customers can be filtered or grouped by
+  customer nation without SQL. Nation names are upper case (`'UNITED KINGDOM'`).
 
 ## Key Tables
 ### fct_orders
@@ -35,8 +38,9 @@ None. Note that about a third of customers have never ordered — keep or drop t
 ## Best Practices / Common Query Patterns
 - Orders per year: `mf query --metrics order_count --group-by metric_time__year --order metric_time__year`
 - Active customers in a year: `mf query --metrics active_customers --where "{{ TimeDimension('metric_time', 'day') }} between '1997-01-01' and '1997-12-31'"`
-- Orders for one nation (nation isn't in the orders semantic model, so use SQL):
-  `dbt show --inline "select count(*) as orders from {{ ref('fct_orders') }} where customer_nation = 'UNITED KINGDOM' and order_date between date '1995-01-01' and date '1995-12-31'" --quiet`
+- Orders for one nation in a year:
+  `mf query --metrics order_count --where "{{ Dimension('order__customer_nation') }} = 'UNITED KINGDOM'" --where "{{ TimeDimension('metric_time', 'day') }} between '1995-01-01' and '1995-12-31'"`
+- Orders by nation: `mf query --metrics order_count --group-by order__customer_nation --order order__customer_nation`
 - Customers who never ordered:
   `dbt show --inline "select count(*) as n from {{ ref('dim_customers') }} where not has_ordered" --quiet`
 
