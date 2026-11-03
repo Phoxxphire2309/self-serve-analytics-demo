@@ -70,6 +70,8 @@ semantic_models:
         type: categorical
       - name: customer_region
         type: categorical
+      - name: customer_nation
+        type: categorical
       - name: market_segment
         type: categorical
     measures:
